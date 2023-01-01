@@ -44,6 +44,7 @@ def run_bot():
     @bot.slash_command(description='ボットの一覧を表示します。（bot_name, status）')
     async def bot_list(ctx):
         """ボットの一覧を表示します。"""
+        await ctx.respond(f'```\ncmd: bot_list\n```')
         embed = discord.Embed(title='bot_list', colour=discord.Colour.blurple())
         for key, value in bots.items():
             status = 'active' if value['popen'] != None else 'dead'
@@ -56,6 +57,8 @@ def run_bot():
         ctx: discord.ApplicationContext,
         bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
     ):
+        """ボットを起動します。"""
+        await ctx.respond(f'```\ncmd: launch_bot, args: {bot_name}\n```')
         res = launch(bots, bot_name)
         msg = '\n'.join([
             'cmd: launch_bot',
@@ -64,7 +67,7 @@ def run_bot():
             f'return_msg: {ERROR_CODE_MSG[res[0]]}',
             f'error_msg: {res[1]}'
         ])
-        await ctx.respond(f'```\n{msg}\n```')
+        await ctx.channel.send(f'```\n{msg}\n```')
 
 
     @bot.slash_command(description='指定したボットを停止します。')
@@ -73,6 +76,7 @@ def run_bot():
         bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
     ):
         """起動しているボットを停止します。"""
+        await ctx.respond(f'```\ncmd: kill_bot, args: {bot_name}\n```')
         res = kill(bots, bot_name)
         msg = '\n'.join([
             'cmd: kill_bot',
@@ -81,7 +85,7 @@ def run_bot():
             f'return_msg: {ERROR_CODE_MSG[res[0]]}',
             f'error_msg: {res[1]}'
         ])
-        await ctx.respond(f'```\n{msg}\n```')
+        await ctx.channel.send(f'```\n{msg}\n```')
 
 
     @bot.slash_command(description='リモートリポジトリをプルします。')
@@ -90,6 +94,7 @@ def run_bot():
         bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
     ):
         """プルリクエスト実行"""
+        await ctx.respond(f'```\ncmd: get_pull, args: {bot_name}\n```')
         # pull
         res = pull(bots, bot_name)
         msg = '\n'.join([
@@ -99,12 +104,12 @@ def run_bot():
             f'return_msg: {ERROR_CODE_MSG[res[0]]}',
             f'error_msg: {res[1]}'
         ])
-        await ctx.respond(f'```\n{msg}\n```')
-        
+        await ctx.channel.send(f'```\n{msg}\n```')
+
         # kill
         res_kill = kill(bots, bot_name)
         msg_restart = '\n'.join([
-            'restart: kill -> launch',
+            'restart_bot: kill -> launch',
             '------------------------------',
             'cmd: kill_bot',
             f'arg: {bot_name}',
@@ -124,6 +129,7 @@ def run_bot():
             f'error_msg: {res_launch[1]}'
         ])
         await ctx.channel.send(f'```\n{msg_restart}\n```')
+
     bot.run(get_config_json('discord_bot')['token'])
 
 
@@ -156,7 +162,7 @@ def kill(bots: dict, bot_name: str) -> list[int, str]:
 
 
 def pull(bots: dict, bot_name: str) -> list[int, str]:
-    """Gitのpullコマンドを実行します。（予めリモートリポジトリの設定をする必要があります。）
+    """Gitのpullコマンドを実行します。（予めGitリモートリポジトリの設定をする必要があります。）
     コンフリクトが起きたら、対処できないかも…"""
     if bot_name not in bots.keys():
         return 1, ''    # 引数の値が見つかりません。
@@ -178,7 +184,6 @@ def get_config_json(name: str) -> Union[list, dict]:
     path = f'{os.path.abspath(os.path.dirname(__file__))}/config/{name}.json'
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
-
 
 
 if __name__ == '__main__':
