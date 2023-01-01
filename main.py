@@ -1,6 +1,7 @@
 
 import os
 import json
+import pathlib
 import subprocess
 from typing import Union, Literal
 import discord
@@ -60,9 +61,10 @@ def run_bot():
             'cmd: launch_bot',
             f'arg: {bot_name}',
             f'return_code: {res[0]}',
-            f'message: {res[1]}'
+            f'return_msg: {ERROR_CODE_MSG[res[0]]}',
+            f'error_msg: {res[1]}'
         ])
-        await ctx.channel.send(f'```\n{msg}\n```')
+        await ctx.respond(f'```\n{msg}\n```')
 
 
     @bot.slash_command(description='指定したボットを停止します。')
@@ -73,12 +75,13 @@ def run_bot():
         """起動しているボットを停止します。"""
         res = kill(bots, bot_name)
         msg = '\n'.join([
-            'cmd: launch_bot',
+            'cmd: kill_bot',
             f'arg: {bot_name}',
             f'return_code: {res[0]}',
-            f'message: {res[1]}'
+            f'return_msg: {ERROR_CODE_MSG[res[0]]}',
+            f'error_msg: {res[1]}'
         ])
-        await ctx.channel.send(f'```\n{msg}\n```')
+        await ctx.respond(f'```\n{msg}\n```')
 
 
     @bot.slash_command(description='リモートリポジトリをプルします。')
@@ -87,7 +90,41 @@ def run_bot():
         bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
     ):
         """プルリクエスト実行"""
-        await ctx.respond('aaaa')
+        
+        await ctx.respond() # 時間かかる処理なので最初に空のレスポンスしておきます。（うっとおしいメッセージ表示回避）
+
+        # pull
+        res = pull(bots, bot_name)
+        msg = '\n'.join([
+            'cmd: git_pull',
+            f'arg: {bot_name}',
+            f'return_code: {res[0]}',
+            f'return_msg: {ERROR_CODE_MSG[res[0]]}',
+            f'error_msg: {res[1]}'
+        ])
+        
+        # kill
+        res_kill = kill(bots, bot_name)
+        msg += '\n'.join([
+            '\n------------------------------',
+            'cmd: kill_bot',
+            f'arg: {bot_name}',
+            f'return_code: {res_kill[0]}',
+            f'return_msg: {ERROR_CODE_MSG[res_kill[0]]}',
+            f'error_msg: {res_kill[1]}'
+        ])
+
+        # launch
+        res_launch = launch(bots, bot_name)
+        msg += '\n'.join([
+            '\n------------------------------',
+            'cmd: launch_bot',
+            f'arg: {bot_name}',
+            f'return_code: {res_launch[0]}',
+            f'return_msg: {ERROR_CODE_MSG[res_launch[0]]}',
+            f'error_msg: {res_launch[1]}'
+        ])
+        await ctx.channel.send(f'```\n{msg}\n```')
 
     bot.run(get_config_json('discord_bot')['token'])
 
@@ -123,8 +160,18 @@ def kill(bots: dict, bot_name: str) -> list[int, str]:
 def pull(bots: dict, bot_name: str) -> list[int, str]:
     """Gitのpullコマンドを実行します。（予めリモートリポジトリの設定をする必要があります。）
     コンフリクトが起きたら、対処できないかも…"""
-
-    
+    if bot_name not in bots.keys():
+        return 1, ''    # 引数の値が見つかりません。
+    else:
+        try:
+            dir = bots[bot_name]['git_dir']
+            cmd = f'cd {dir}; git pull'
+            if (return_code := os.system(cmd)) == 0:
+                return 0, ''    # 正常に処理しました。
+            else:
+                return 3, f'cmd: {cmd}\nreturn_code: {return_code}' # リターンコード出るか？
+        except Exception as e:
+            return 3, str(e)    # エラーが発生しました。
 
 
 #@cache  # キャッシュによる高速化
