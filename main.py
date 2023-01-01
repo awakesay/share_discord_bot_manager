@@ -26,14 +26,14 @@ def run_bot():
     @bot.event
     async def on_ready():
         """起動処理＆メッセージ"""
-        # ボット情報取得（popen属性追加）
         global bots
+        global args_bot
+        # ボット情報取得（popen属性追加）
         bots = get_config_json('bots')
         del bots['{bot_name}']
         for value in bots.values():
             value['popen'] = None
         # 引数取得（ボット名）
-        global args_bot
         args_bot = list(get_config_json('bots').keys())
         args_bot.remove('{bot_name}')
         # 起動メッセージ
@@ -45,12 +45,12 @@ def run_bot():
     async def bot_list(ctx):
         """ボットの一覧を表示します。"""
         await ctx.respond(f'```\ncmd: bot_list\n```')
-        embed = discord.Embed(title='bot_list', colour=discord.Colour.blurple())
-        for key, value in bots.items():
+        msg = 'bot_name\t->\tstatus\n------------------------------'
+        for bot_name, value in bots.items():
             status = 'active' if value['popen'] != None else 'dead'
-            embed.add_field(name=f'bot_name: {key}', value=f'status: {status}', inline=False)
-        
-        await ctx.channel.send(embed=embed)
+            msg += f'\n{bot_name}\t->\t{status}'
+        await ctx.channel.send(f'```\n{msg}\n```')
+
 
     @bot.slash_command(description='指定したボットを起動します。')
     async def launch_bot(
