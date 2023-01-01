@@ -90,9 +90,6 @@ def run_bot():
         bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
     ):
         """プルリクエスト実行"""
-        
-        await ctx.respond() # 時間かかる処理なので最初に空のレスポンスしておきます。（うっとおしいメッセージ表示回避）
-
         # pull
         res = pull(bots, bot_name)
         msg = '\n'.join([
@@ -102,11 +99,13 @@ def run_bot():
             f'return_msg: {ERROR_CODE_MSG[res[0]]}',
             f'error_msg: {res[1]}'
         ])
+        await ctx.respond(f'```\n{msg}\n```')
         
         # kill
         res_kill = kill(bots, bot_name)
-        msg += '\n'.join([
-            '\n------------------------------',
+        msg_restart = '\n'.join([
+            'restart: kill -> launch',
+            '------------------------------',
             'cmd: kill_bot',
             f'arg: {bot_name}',
             f'return_code: {res_kill[0]}',
@@ -116,7 +115,7 @@ def run_bot():
 
         # launch
         res_launch = launch(bots, bot_name)
-        msg += '\n'.join([
+        msg_restart += '\n'.join([
             '\n------------------------------',
             'cmd: launch_bot',
             f'arg: {bot_name}',
@@ -124,8 +123,7 @@ def run_bot():
             f'return_msg: {ERROR_CODE_MSG[res_launch[0]]}',
             f'error_msg: {res_launch[1]}'
         ])
-        await ctx.channel.send(f'```\n{msg}\n```')
-
+        await ctx.channel.send(f'```\n{msg_restart}\n```')
     bot.run(get_config_json('discord_bot')['token'])
 
 
