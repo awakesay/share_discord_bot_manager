@@ -1,0 +1,8 @@
+/__pycache__
+
+# ボットのトークン設定ファイル
+# {
+#     "token": "{ここにトークン}"
+# }  
+/config/discord_bot.json
+
