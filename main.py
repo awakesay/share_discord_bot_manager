@@ -7,7 +7,7 @@ from typing import Union, Literal
 import discord
 from functools import cache
 
-ERROR_CODE_MSG = {
+RETURN_CODE_MSG = {
     0: "正常に処理しました。",
     1: "引数の値が見つかりません。",
     2: "既に処理しています。",
@@ -19,6 +19,9 @@ args_bot: list = [] # 引数のボット名（コマンド利用時の利便性�
 
 def run_bot():
 
+    global bots
+    global args_bot
+    
     intents = discord.Intents.all()
     intents.message_content = True
     bot = discord.Bot(intents=intents)
@@ -51,11 +54,28 @@ def run_bot():
             msg += f'\n{bot_name}\t->\t{status}'
         await ctx.channel.send(f'```\n{msg}\n```')
 
+    @bot.slash_command(description='管理下のボットを全て起動します。')
+    async def launch_bots(ctx):
+        """全てのボットを起動します。"""
+        await ctx.respond(f'```\ncmd: launch_bots\n```')
+        msg = ''
+        for bot_name in bots.keys():
+            res = launch(bots, bot_name)
+            sep = '\n------------------------------' if msg != '' else ''
+            msg += '\n'.join([
+                sep,
+                'cmd: launch_bot',
+                f'arg: {bot_name}',
+                f'return_code: {res[0]}',
+                f'return_msg: {RETURN_CODE_MSG[res[0]]}',
+                f'error_msg: {res[1]}'
+            ])
+        await ctx.channel.send(f'```\n{msg}\n```')
 
-    @bot.slash_command(description='指定したボットを起動します。')
+    @bot.slash_command(description='指定したボットを起動します。引数のボット名は /bot_list コマンドで確認できます。')
     async def launch_bot(
         ctx: discord.ApplicationContext,
-        bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
+        bot_name: discord.Option(str, required=True, description=f'ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
     ):
         """ボットを起動します。"""
         await ctx.respond(f'```\ncmd: launch_bot, args: {bot_name}\n```')
@@ -64,16 +84,16 @@ def run_bot():
             'cmd: launch_bot',
             f'arg: {bot_name}',
             f'return_code: {res[0]}',
-            f'return_msg: {ERROR_CODE_MSG[res[0]]}',
+            f'return_msg: {RETURN_CODE_MSG[res[0]]}',
             f'error_msg: {res[1]}'
         ])
         await ctx.channel.send(f'```\n{msg}\n```')
 
 
-    @bot.slash_command(description='指定したボットを停止します。')
+    @bot.slash_command(description='指定したボットを停止します。引数のボット名は /bot_list コマンドで確認できます。')
     async def kill_bot(
         ctx: discord.ApplicationContext,
-        bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
+        bot_name: discord.Option(str, required=True, description='ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
     ):
         """起動しているボットを停止します。"""
         await ctx.respond(f'```\ncmd: kill_bot, args: {bot_name}\n```')
@@ -82,16 +102,16 @@ def run_bot():
             'cmd: kill_bot',
             f'arg: {bot_name}',
             f'return_code: {res[0]}',
-            f'return_msg: {ERROR_CODE_MSG[res[0]]}',
+            f'return_msg: {RETURN_CODE_MSG[res[0]]}',
             f'error_msg: {res[1]}'
         ])
         await ctx.channel.send(f'```\n{msg}\n```')
 
 
-    @bot.slash_command(description='リモートリポジトリをプルします。')
+    @bot.slash_command(description='リモートリポジトリをプルして、ボットの再起動コマンドを実行します。')
     async def git_pull(
         ctx: discord.ApplicationContext,
-        bot_name: discord.Option(str, required=True, description=f" = [{', '.join(args_bot)}]")
+        bot_name: discord.Option(str, required=True, description='ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
     ):
         """プルリクエスト実行"""
         await ctx.respond(f'```\ncmd: get_pull, args: {bot_name}\n```')
@@ -101,7 +121,7 @@ def run_bot():
             'cmd: git_pull',
             f'arg: {bot_name}',
             f'return_code: {res[0]}',
-            f'return_msg: {ERROR_CODE_MSG[res[0]]}',
+            f'return_msg: {RETURN_CODE_MSG[res[0]]}',
             f'error_msg: {res[1]}'
         ])
         await ctx.channel.send(f'```\n{msg}\n```')
@@ -109,12 +129,12 @@ def run_bot():
         # kill
         res_kill = kill(bots, bot_name)
         msg_restart = '\n'.join([
-            'restart_bot: kill -> launch',
+            'auto restart: kill -> launch',
             '------------------------------',
             'cmd: kill_bot',
             f'arg: {bot_name}',
             f'return_code: {res_kill[0]}',
-            f'return_msg: {ERROR_CODE_MSG[res_kill[0]]}',
+            f'return_msg: {RETURN_CODE_MSG[res_kill[0]]}',
             f'error_msg: {res_kill[1]}'
         ])
 
@@ -125,7 +145,7 @@ def run_bot():
             'cmd: launch_bot',
             f'arg: {bot_name}',
             f'return_code: {res_launch[0]}',
-            f'return_msg: {ERROR_CODE_MSG[res_launch[0]]}',
+            f'return_msg: {RETURN_CODE_MSG[res_launch[0]]}',
             f'error_msg: {res_launch[1]}'
         ])
         await ctx.channel.send(f'```\n{msg_restart}\n```')
@@ -155,7 +175,6 @@ def kill(bots: dict, bot_name: str) -> list[int, str]:
     elif (bot := bots[bot_name])['popen'] == None:
         return 2, ''    # 既に処理しています。
     else:
-        # bot['popen'].terminate()
         bot['popen'].kill()
         bot['popen'] = None
         return 0, ''    # 正常に処理しました。
@@ -173,7 +192,7 @@ def pull(bots: dict, bot_name: str) -> list[int, str]:
             if (return_code := os.system(cmd)) == 0:
                 return 0, ''    # 正常に処理しました。
             else:
-                return 3, f'cmd: {cmd}\nreturn_code: {return_code}' # リターンコード出るか？
+                return 3, f'cmd: {cmd}\nreturn_code: {return_code}' # リターンコード出るかわからんけど念の為
         except Exception as e:
             return 3, str(e)    # エラーが発生しました。
 
