@@ -1,16 +1,16 @@
 {
     "{bot_name}": {
-        "launch_app": "{起動するプログラム}",
+        "start_app": "{起動するプログラム}",
         "app_arg": "{起動するプログラムの引数}",
         "git_dir": "{Gitのディレクトリ（予めリモートリポジトリをセットしてください。）}"
     },
     "vc_entry": {
-        "launch_app": "python3",
+        "start_app": "python3",
         "app_arg": "/home/awakepi4/Desktop/discord_bot_vc_entry/main.py",
         "git_dir": "/home/awakepi4/Desktop/discord_bot_vc_entry"
     },
     "textra": {
-        "launch_app": "python3",
+        "start_app": "python3",
         "app_arg": "/home/awakepi4/Desktop/discord_bot_textra/main.py",
         "git_dir": "/home/awakepi4/Desktop/discord_bot_textra"
     }

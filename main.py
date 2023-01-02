@@ -54,17 +54,18 @@ def run_bot():
             msg += f'\n{bot_name}\t->\t{status}'
         await ctx.channel.send(f'```\n{msg}\n```')
 
+
     @bot.slash_command(description='管理下のボットを全て起動します。')
-    async def launch_bots(ctx):
+    async def start_bots(ctx):
         """全てのボットを起動します。"""
-        await ctx.respond(f'```\ncmd: launch_bots\n```')
+        await ctx.respond(f'```\ncmd: start_bots\n```')
         msg = ''
         for bot_name in bots.keys():
-            res = launch(bots, bot_name)
+            res = start(bots, bot_name)
             sep = '\n------------------------------' if msg != '' else ''
             msg += '\n'.join([
                 sep,
-                'cmd: launch_bot',
+                'cmd: start_bot',
                 f'arg: {bot_name}',
                 f'return_code: {res[0]}',
                 f'return_msg: {RETURN_CODE_MSG[res[0]]}',
@@ -73,15 +74,15 @@ def run_bot():
         await ctx.channel.send(f'```\n{msg}\n```')
 
     @bot.slash_command(description='指定したボットを起動します。引数のボット名は /bot_list コマンドで確認できます。')
-    async def launch_bot(
+    async def start_bot(
         ctx: discord.ApplicationContext,
         bot_name: discord.Option(str, required=True, description=f'ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
     ):
         """ボットを起動します。"""
-        await ctx.respond(f'```\ncmd: launch_bot, args: {bot_name}\n```')
-        res = launch(bots, bot_name)
+        await ctx.respond(f'```\ncmd: start_bot, bot_name: {bot_name}\n```')
+        res = start(bots, bot_name)
         msg = '\n'.join([
-            'cmd: launch_bot',
+            'cmd: start_bot',
             f'arg: {bot_name}',
             f'return_code: {res[0]}',
             f'return_msg: {RETURN_CODE_MSG[res[0]]}',
@@ -90,13 +91,44 @@ def run_bot():
         await ctx.channel.send(f'```\n{msg}\n```')
 
 
+    @bot.slash_command(description='指定したボットを再起動します。引数のボット名は /bot_list コマンドで確認できます。')
+    async def restart_bot(
+        ctx: discord.ApplicationContext,
+        bot_name: discord.Option(str, required=True, description=f'ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
+    ):
+        """ボットを再起動します。"""
+        await ctx.respond(f'```\ncmd: restart_bot, bot_name: {bot_name}\n```')
+        # kill
+        res_kill = kill(bots, bot_name)
+        msg_restart = '\n'.join([
+            'restart_bot: kill -> start',
+            '------------------------------',
+            'cmd: kill_bot',
+            f'arg: {bot_name}',
+            f'return_code: {res_kill[0]}',
+            f'return_msg: {RETURN_CODE_MSG[res_kill[0]]}',
+            f'error_msg: {res_kill[1]}'
+        ])
+
+        # start
+        res_start = start(bots, bot_name)
+        msg_restart += '\n'.join([
+            '\n------------------------------',
+            'cmd: start_bot',
+            f'arg: {bot_name}',
+            f'return_code: {res_start[0]}',
+            f'return_msg: {RETURN_CODE_MSG[res_start[0]]}',
+            f'error_msg: {res_start[1]}'
+        ])
+        await ctx.channel.send(f'```\n{msg_restart}\n```')
+
     @bot.slash_command(description='指定したボットを停止します。引数のボット名は /bot_list コマンドで確認できます。')
     async def kill_bot(
         ctx: discord.ApplicationContext,
         bot_name: discord.Option(str, required=True, description='ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
     ):
         """起動しているボットを停止します。"""
-        await ctx.respond(f'```\ncmd: kill_bot, args: {bot_name}\n```')
+        await ctx.respond(f'```\ncmd: kill_bot, bot_name: {bot_name}\n```')
         res = kill(bots, bot_name)
         msg = '\n'.join([
             'cmd: kill_bot',
@@ -114,7 +146,7 @@ def run_bot():
         bot_name: discord.Option(str, required=True, description='ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
     ):
         """プルリクエスト実行"""
-        await ctx.respond(f'```\ncmd: get_pull, args: {bot_name}\n```')
+        await ctx.respond(f'```\ncmd: get_pull, bot_name: {bot_name}\n```')
         # pull
         res = pull(bots, bot_name)
         msg = '\n'.join([
@@ -129,7 +161,7 @@ def run_bot():
         # kill
         res_kill = kill(bots, bot_name)
         msg_restart = '\n'.join([
-            'auto restart: kill -> launch',
+            'auto restart: kill -> start',
             '------------------------------',
             'cmd: kill_bot',
             f'arg: {bot_name}',
@@ -138,22 +170,22 @@ def run_bot():
             f'error_msg: {res_kill[1]}'
         ])
 
-        # launch
-        res_launch = launch(bots, bot_name)
+        # start
+        res_start = start(bots, bot_name)
         msg_restart += '\n'.join([
             '\n------------------------------',
-            'cmd: launch_bot',
+            'cmd: start_bot',
             f'arg: {bot_name}',
-            f'return_code: {res_launch[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res_launch[0]]}',
-            f'error_msg: {res_launch[1]}'
+            f'return_code: {res_start[0]}',
+            f'return_msg: {RETURN_CODE_MSG[res_start[0]]}',
+            f'error_msg: {res_start[1]}'
         ])
         await ctx.channel.send(f'```\n{msg_restart}\n```')
 
     bot.run(get_config_json('discord_bot')['token'])
 
 
-def launch(bots: dict, bot_name: str) -> list[int, str]:
+def start(bots: dict, bot_name: str) -> list[int, str]:
     """subprocess.Popenでボットを起動して['popen']に格納します。"""
     if bot_name not in bots.keys():
         return 1, ''    # 引数の値が見つかりません。
@@ -161,7 +193,7 @@ def launch(bots: dict, bot_name: str) -> list[int, str]:
         return 2, ''    # 既に処理しています。
     else:
         try:
-            popen = subprocess.Popen(f"exec {bot['launch_app']} {bot['app_arg']}", shell=True)
+            popen = subprocess.Popen(f"exec {bot['start_app']} {bot['app_arg']}", shell=True)
             bot['popen'] = popen
             return 0, ''        # 正常に処理しました。      
         except Exception as e:
@@ -197,7 +229,6 @@ def pull(bots: dict, bot_name: str) -> list[int, str]:
             return 3, str(e)    # エラーが発生しました。
 
 
-#@cache  # キャッシュによる高速化
 def get_config_json(name: str) -> Union[list, dict]:
     """configフォルダ内の設定を取得して返します。"""
     path = f'{os.path.abspath(os.path.dirname(__file__))}/config/{name}.json'
