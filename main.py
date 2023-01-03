@@ -18,6 +18,7 @@ RETURN_CODE_MSG = {
 
 bots: dict = {}         # ボット情報（subprocess.Popenオブジェクトも格納します。）
 bot_names: list = []    # コマンド引数の入力候補
+do_cmds: list = []      # コマンド引数の入力制限
 
 def run_bot():
 
@@ -32,6 +33,8 @@ def run_bot():
     # 引数取得（ボット名）
     bot_names = list(get_config_json('bots').keys())
     bot_names.remove('{bot_name}')
+    # 入力制限取得（コマンド）
+    do_cmds = get_config_json('do_cmd_permission')['start_cmd']
 
     intents = discord.Intents.all()
     intents.message_content = True
@@ -180,7 +183,7 @@ def run_bot():
         ctx: discord.ApplicationContext,
         command: discord.Option(
             input_type=str,
-            description='ローカルマシンで実行するコマンドを入力してください。',
+            description=f'許可コマンド [{", ".join(do_cmds)}]',
             required=True
         )
     ):
@@ -195,13 +198,13 @@ def run_bot():
         }]
         await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
         
-        if len(res[2]) != 0:
-            msg_stdout = f'[stdout] 2000文字以上は表示できません。\n{res[2]}'[:1990]
-            await ctx.channel.send(f'```\n{msg_stdout}\n```')
-        
-        if len(res[3]) != 0:
-            msg_stderr = f'[stderr] 2000文字以上は表示できません。\n{res[3]}'[:1990]
-            await ctx.channel.send(f'```\n{msg_stderr}\n```')
+        LENGTH_LIMIT = 1900
+        for std_name, std_output in zip(['stdout', 'stderr'], [res[2], res[3]]):
+            if len(std_output) != 0:
+                msg = f'[{std_name}]\n{std_output}'
+                if len(msg) > LENGTH_LIMIT:
+                    msg = f'[{std_name}] 文字が多いため、前半部分を省略しました。\n[省略]{msg[-LENGTH_LIMIT:]}'
+                await ctx.channel.send(f'```\n{msg}\n```')
         
 
     bot.run(get_config_json('discord_bot')['token'])
@@ -254,8 +257,12 @@ def pull(bots: dict, bot_name: str) -> list[int, str]:
 def do_cmd(ctx: discord.ApplicationContext, command: str) -> list[int, str, str, str]:
     """ローカルマシンでコマンドを実行します。"""
     do_cmd_permission = get_config_json('do_cmd_permission')
-    if ctx.author.id not in do_cmd_permission:
-        return 3, '権限がありません。', '', ''
+    if ctx.author.id not in do_cmd_permission['user_id']:
+        return 3, 'ユーザー権限がありません。', '', ''
+
+    pass_cmd = [cmd for cmd in do_cmd_permission['start_cmd'] if command.startswith(cmd)]
+    if len(pass_cmd) == 0:
+        return 3, f'許可されていないコマンドです。', '', ''
 
     try:
         ret = subprocess.run(
