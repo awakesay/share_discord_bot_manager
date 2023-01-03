@@ -9,6 +9,7 @@ from typing import Union, Literal
 import discord
 from tabulate import tabulate       # テーブル化
 
+DO_CMD_TIMEOUT = 60
 RETURN_CODE_MSG = {
     0: "正常に処理しました。",
     1: "引数の値が見つかりません。",
@@ -178,7 +179,7 @@ def run_bot():
         await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
 
 
-    @bot.slash_command(description='ボットが稼働しているローカルマシンにコマンドを送ります。（タイムアウト60秒）')
+    @bot.slash_command(description=f'ボットが稼働しているローカルマシンにコマンドを送ります。（タイムアウト{DO_CMD_TIMEOUT}秒）')
     async def mng_do_cmd(
         ctx: discord.ApplicationContext,
         command: discord.Option(
@@ -272,11 +273,11 @@ def do_cmd(ctx: discord.ApplicationContext, command: str) -> list[int, str, str,
             stderr=subprocess.PIPE,
             shell=True,
             encoding='utf-8',
-            timeout=60
+            timeout=DO_CMD_TIMEOUT  # タイムアウト設定
         )
         return 0, '', ret.stdout, ret.stderr
     except subprocess.TimeoutExpired as e:
-        return 3, 'タイムアウトしました。（timeout=60）', '', ''
+        return 3, f'タイムアウトしました。（timeout={DO_CMD_TIMEOUT}）', '', ''
 
 
 def get_config_json(name: str) -> Union[list, dict]:
