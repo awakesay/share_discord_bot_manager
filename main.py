@@ -71,7 +71,7 @@ def run_bot():
         for bot_name in bots.keys():
             res = start(bots, bot_name)
             table.append({
-                'cmd': 'mng_start_all_bot',
+                'cmd': 'mng_start_bot',
                 'bot_name': bot_name,
                 'ret_code': res[0],
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
