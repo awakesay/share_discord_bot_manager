@@ -5,14 +5,16 @@ import platform
 import subprocess
 from typing import Union
 import discord
+import tabulate as Tabulate         # 重複回避
 from tabulate import tabulate       # テーブル化
 
-DO_CMD_TIMEOUT = 60
-RETURN_CODE_MSG = {
-    0: "正常に処理しました。",
-    1: "引数の値が見つかりません。",
-    2: "既に処理しています。",
-    3: "エラーが発生しました。"
+DO_CMD_TIMEOUT = 60                 # mng_do_cmdのタイムアウト設定
+
+RETURN_CODE_MSG = {                 # tabulateで表にするとズレるので、日本語から英語にしました。
+    0: "Processed successfully.",   # 正常に処理しました。
+    1: "Argument value not found.", # 引数の値が見つかりません。
+    2: "Already processed.",        # 既に処理しています。
+    3: "An error has occurred."     # エラーが発生しました。
 }
 
 bots: dict = {}         # ボット情報（subprocess.Popenオブジェクトも格納します。）
@@ -21,7 +23,7 @@ do_cmds: list = []      # コマンド引数の入力制限
 
 def run_bot():
 
-    global bots
+    global bots         # 関数内でグローバル変数の代入利用
     global bot_names
 
     # ボット情報取得（popen属性追加）
@@ -75,7 +77,7 @@ def run_bot():
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
                 'err_msg': 'none' if res[1] == '' else res[1]
             })
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys",)}\n```')
 
 
     @bot.slash_command(description='指定したボットに対し起動コマンドを実行します。')
@@ -202,10 +204,9 @@ def run_bot():
             if len(std_output) != 0:
                 msg = f'[{std_name}]\n{std_output}'
                 if len(msg) > LENGTH_LIMIT:
-                    msg = f'[{std_name}] 文字が多いため、前半部分を省略しました。\n[省略]{msg[-LENGTH_LIMIT:]}'
+                    msg = f'[{std_name}] 表示できない前半を省略しました。\n<省略>{msg[-LENGTH_LIMIT:]}'
                 await ctx.channel.send(f'```\n{msg}\n```')
         
-
     bot.run(get_config_json('discord_bot')['token'])
 
 
@@ -257,11 +258,11 @@ def do_cmd(ctx: discord.ApplicationContext, command: str) -> list[int, str, str,
     """ローカルマシンでコマンドを実行します。"""
     do_cmd_permission = get_config_json('do_cmd_permission')
     if ctx.author.id not in do_cmd_permission['user_id']:
-        return 3, 'ユーザー権限がありません。', '', ''
+        return 3, 'User without permission.', '', ''
 
     pass_cmd = [cmd for cmd in do_cmd_permission['start_cmd'] if command.startswith(cmd)]
     if len(pass_cmd) == 0:
-        return 3, f'許可されていないコマンドです。', '', ''
+        return 3, f'Not permitted command.', '', ''
 
     try:
         ret = subprocess.run(
@@ -275,7 +276,7 @@ def do_cmd(ctx: discord.ApplicationContext, command: str) -> list[int, str, str,
         )
         return 0, '', ret.stdout, ret.stderr
     except subprocess.TimeoutExpired as e:
-        return 3, f'タイムアウトしました。（timeout={DO_CMD_TIMEOUT}）', '', ''
+        return 3, f'Timeout.({DO_CMD_TIMEOUT} sec)', '', ''
 
 
 def get_config_json(name: str) -> Union[list, dict]:
