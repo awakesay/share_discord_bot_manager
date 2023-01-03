@@ -2,10 +2,12 @@
 import os
 import json
 import pathlib
+import platform
 import subprocess
+from functools import cache
 from typing import Union, Literal
 import discord
-from functools import cache
+from tabulate import tabulate       # テーブル化
 
 RETURN_CODE_MSG = {
     0: "正常に処理しました。",
@@ -14,179 +16,199 @@ RETURN_CODE_MSG = {
     3: "エラーが発生しました。"
 }
 
-bots: dict = {}     # ボット情報（subprocess.Popenオブジェクト格納）
-args_bot: list = [] # 引数のボット名（コマンド利用時の利便性向上）
+bots: dict = {}         # ボット情報（subprocess.Popenオブジェクトも格納します。）
+bot_names: list = []    # コマンド引数の入力候補
 
 def run_bot():
 
     global bots
-    global args_bot
-    
+    global bot_names
+
+    # ボット情報取得（popen属性追加）
+    bots = get_config_json('bots')
+    del bots['{bot_name}']
+    for value in bots.values():
+        value['popen'] = None
+    # 引数取得（ボット名）
+    bot_names = list(get_config_json('bots').keys())
+    bot_names.remove('{bot_name}')
+
     intents = discord.Intents.all()
     intents.message_content = True
     bot = discord.Bot(intents=intents)
 
+
     @bot.event
     async def on_ready():
-        """起動処理＆メッセージ"""
-        global bots
-        global args_bot
-        # ボット情報取得（popen属性追加）
-        bots = get_config_json('bots')
-        del bots['{bot_name}']
-        for value in bots.values():
-            value['popen'] = None
-        # 引数取得（ボット名）
-        args_bot = list(get_config_json('bots').keys())
-        args_bot.remove('{bot_name}')
-        # 起動メッセージ
-        print('on_ready')
-        print(f'version: {discord.__version__}')
+        """起動メッセージ"""
+        print(f'{"-"*30}\ndiscord_bot_manager_on_ready')
+        print(f'python_version: {platform.python_version()}')
+        print(f'pycord_version: {discord.__version__}')
 
 
-    @bot.slash_command(description='ボットの一覧を表示します。（bot_name, status）')
-    async def bot_list(ctx):
-        """ボットの一覧を表示します。"""
-        await ctx.respond(f'```\ncmd: bot_list\n```')
-        msg = 'bot_name\t->\tstatus\n------------------------------'
+    @bot.slash_command(description='ボットのステータスを表示します。')
+    async def mng_status_bots(ctx: discord.ApplicationContext):
+        """"""
+        await ctx.respond(f'```\ncmd: mng_status_bots\n```')
+        table = []
         for bot_name, value in bots.items():
-            status = 'active' if value['popen'] != None else 'dead'
-            msg += f'\n{bot_name}\t->\t{status}'
-        await ctx.channel.send(f'```\n{msg}\n```')
+            table.append({
+                'bot_name': bot_name,
+                'status': 'active' if value['popen'] != None else 'dead'
+            })
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
 
 
-    @bot.slash_command(description='管理下のボットを全て起動します。')
-    async def start_bots(ctx):
-        """全てのボットを起動します。"""
-        await ctx.respond(f'```\ncmd: start_bots\n```')
-        msg = ''
+    @bot.slash_command(description='全ボットに対し起動コマンドを実行します。')
+    async def mng_start_all_bot(ctx: discord.ApplicationContext):
+        """"""
+        await ctx.respond(f'```\ncmd: mng_start_all_bot\n```')
+        table = []
         for bot_name in bots.keys():
             res = start(bots, bot_name)
-            sep = '\n------------------------------' if msg != '' else ''
-            msg += '\n'.join([
-                sep,
-                'cmd: start_bot',
-                f'arg: {bot_name}',
-                f'return_code: {res[0]}',
-                f'return_msg: {RETURN_CODE_MSG[res[0]]}',
-                f'error_msg: {res[1]}'
-            ])
-        await ctx.channel.send(f'```\n{msg}\n```')
+            table.append({
+                'cmd': 'mng_start_all_bot',
+                'bot_name': bot_name,
+                'ret_code': res[0],
+                'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
+                'err_msg': 'none' if res[1] == '' else res[1]
+            })
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
 
-    @bot.slash_command(description='指定したボットを起動します。引数のボット名は /bot_list コマンドで確認できます。')
-    async def start_bot(
+
+    @bot.slash_command(description='指定したボットに対し起動コマンドを実行します。')
+    async def mng_start_bot(
         ctx: discord.ApplicationContext,
-        bot_name: discord.Option(str, required=True, description=f'ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
+        bot_name: discord.Option(
+            input_type=str,
+            description=f'ボット名を指定してください。（入力候補）',
+            choices=bot_names,
+            required=True
+        )
     ):
-        """ボットを起動します。"""
-        await ctx.respond(f'```\ncmd: start_bot, bot_name: {bot_name}\n```')
+        """"""
+        await ctx.respond(f'```\ncmd: mng_start_bot, bot_name: {bot_name}\n```')
         res = start(bots, bot_name)
-        msg = '\n'.join([
-            'cmd: start_bot',
-            f'arg: {bot_name}',
-            f'return_code: {res[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res[0]]}',
-            f'error_msg: {res[1]}'
-        ])
-        await ctx.channel.send(f'```\n{msg}\n```')
+        table =[{
+            'cmd': 'mng_start_bot',
+            'bot_name': bot_name,
+            'ret_code': res[0],
+            'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
+            'err_msg': 'none' if res[1] == '' else res[1]
+        }]
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
 
 
-    @bot.slash_command(description='指定したボットを再起動します。引数のボット名は /bot_list コマンドで確認できます。')
-    async def restart_bot(
+    @bot.slash_command(description='指定したボットに対し停止コマンドを実行します。')
+    async def mng_stop_bot(
         ctx: discord.ApplicationContext,
-        bot_name: discord.Option(str, required=True, description=f'ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
+        bot_name: discord.Option(
+            input_type=str,
+            description=f'ボット名を指定してください。（入力候補）',
+            choices=bot_names,
+            required=True
+        )
     ):
-        """ボットを再起動します。"""
-        await ctx.respond(f'```\ncmd: restart_bot, bot_name: {bot_name}\n```')
-        # kill
-        res_kill = kill(bots, bot_name)
-        msg_restart = '\n'.join([
-            'restart_bot: kill -> start',
-            '------------------------------',
-            'cmd: kill_bot',
-            f'arg: {bot_name}',
-            f'return_code: {res_kill[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res_kill[0]]}',
-            f'error_msg: {res_kill[1]}'
-        ])
+        """"""
+        await ctx.respond(f'```\ncmd: mng_stop_bot, bot_name: {bot_name}\n```')
+        res = stop(bots, bot_name)
+        table =[{
+            'cmd': 'mng_stop_bot',
+            'bot_name': bot_name,
+            'ret_code': res[0],
+            'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
+            'err_msg': 'none' if res[1] == '' else res[1]
+        }]
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
 
-        # start
-        res_start = start(bots, bot_name)
-        msg_restart += '\n'.join([
-            '\n------------------------------',
-            'cmd: start_bot',
-            f'arg: {bot_name}',
-            f'return_code: {res_start[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res_start[0]]}',
-            f'error_msg: {res_start[1]}'
-        ])
-        await ctx.channel.send(f'```\n{msg_restart}\n```')
 
-    @bot.slash_command(description='指定したボットを停止します。引数のボット名は /bot_list コマンドで確認できます。')
-    async def kill_bot(
+    @bot.slash_command(description='指定したボットに対し停止コマンド・起動コマンドを順次実行します。')
+    async def mng_restart_bot(
         ctx: discord.ApplicationContext,
-        bot_name: discord.Option(str, required=True, description='ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
+        bot_name: discord.Option(
+            input_type=str,
+            description=f'ボット名を指定してください。（入力候補）',
+            choices=bot_names,
+            required=True
+        )
     ):
-        """起動しているボットを停止します。"""
-        await ctx.respond(f'```\ncmd: kill_bot, bot_name: {bot_name}\n```')
-        res = kill(bots, bot_name)
-        msg = '\n'.join([
-            'cmd: kill_bot',
-            f'arg: {bot_name}',
-            f'return_code: {res[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res[0]]}',
-            f'error_msg: {res[1]}'
-        ])
-        await ctx.channel.send(f'```\n{msg}\n```')
+        """"""
+        await ctx.respond(f'```\ncmd: mng_restart_bot, bot_name: {bot_name}\n```')
+        res_stop = list(stop(bots, bot_name)) + ['mng_stop_bot']
+        res_start = list(start(bots, bot_name)) + ['mng_start_bot']
+        table = []
+        for res in [res_stop, res_start]:
+            table.append({
+                'cmd': res[2],
+                'bot_name': bot_name,
+                'ret_code': res[0],
+                'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
+                'err_msg': 'none' if res[1] == '' else res[1]
+            })
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
 
 
-    @bot.slash_command(description='リモートリポジトリをプルして、ボットの再起動コマンドを実行します。')
-    async def git_pull(
+    @bot.slash_command(description='指定したボットに対しgit pullコマンド・停止コマンド・起動コマンドを順次実行します。')
+    async def mng_git_pull(
         ctx: discord.ApplicationContext,
-        bot_name: discord.Option(str, required=True, description='ボット名を指定してください。 /bot_list コマンドでボット名を確認できます。')
+        bot_name: discord.Option(
+            input_type=str,
+            description=f'ボット名を指定してください。（入力候補）',
+            choices=bot_names,
+            required=True
+        )
     ):
-        """プルリクエスト実行"""
-        await ctx.respond(f'```\ncmd: get_pull, bot_name: {bot_name}\n```')
-        # pull
-        res = pull(bots, bot_name)
-        msg = '\n'.join([
-            'cmd: git_pull',
-            f'arg: {bot_name}',
-            f'return_code: {res[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res[0]]}',
-            f'error_msg: {res[1]}'
-        ])
-        await ctx.channel.send(f'```\n{msg}\n```')
+        """"""
+        await ctx.respond(f'```\ncmd: mng_git_pull, bot_name: {bot_name}\n```')
+        res_pull = list(pull(bots, bot_name)) + ['mng_git_pull']    
+        res_stop = list(stop(bots, bot_name)) + ['mng_stop_bot']
+        res_start = list(start(bots, bot_name)) + ['mng_start_bot']
+        table = []
+        for res in [res_pull, res_stop, res_start]:
+            table.append({
+                'cmd': res[2],
+                'bot_name': bot_name,
+                'ret_code': res[0],
+                'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
+                'err_msg': 'none' if res[1] == '' else res[1]
+            })
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
 
-        # kill
-        res_kill = kill(bots, bot_name)
-        msg_restart = '\n'.join([
-            'auto restart: kill -> start',
-            '------------------------------',
-            'cmd: kill_bot',
-            f'arg: {bot_name}',
-            f'return_code: {res_kill[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res_kill[0]]}',
-            f'error_msg: {res_kill[1]}'
-        ])
 
-        # start
-        res_start = start(bots, bot_name)
-        msg_restart += '\n'.join([
-            '\n------------------------------',
-            'cmd: start_bot',
-            f'arg: {bot_name}',
-            f'return_code: {res_start[0]}',
-            f'return_msg: {RETURN_CODE_MSG[res_start[0]]}',
-            f'error_msg: {res_start[1]}'
-        ])
-        await ctx.channel.send(f'```\n{msg_restart}\n```')
+    @bot.slash_command(description='ボットが稼働しているローカルマシンにコマンドを送ります。（タイムアウト60秒）')
+    async def mng_do_cmd(
+        ctx: discord.ApplicationContext,
+        command: discord.Option(
+            input_type=str,
+            description='ローカルマシンで実行するコマンドを入力してください。',
+            required=True
+        )
+    ):
+        await ctx.respond(f'```\ncmd: mng_do_cmd, command: {command}\n```')
+        res = do_cmd(ctx, command)
+        table = [{
+            'cmd': 'mng_do_cmd',
+            'command': command,
+            'ret_code': res[0],
+            'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
+            'err_msg': 'none' if res[1] == '' else res[1]
+        }]
+        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        
+        if len(res[2]) != 0:
+            msg_stdout = f'[stdout] 2000文字以上は表示できません。\n{res[2]}'[:1990]
+            await ctx.channel.send(f'```\n{msg_stdout}\n```')
+        
+        if len(res[3]) != 0:
+            msg_stderr = f'[stderr] 2000文字以上は表示できません。\n{res[3]}'[:1990]
+            await ctx.channel.send(f'```\n{msg_stderr}\n```')
+        
 
     bot.run(get_config_json('discord_bot')['token'])
 
 
 def start(bots: dict, bot_name: str) -> list[int, str]:
-    """subprocess.Popenでボットを起動して['popen']に格納します。"""
+    """subprocess.Popenでボットを起動してbots['popen']に格納します。"""
     if bot_name not in bots.keys():
         return 1, ''    # 引数の値が見つかりません。
     elif (bot := bots[bot_name])['popen'] != None:
@@ -200,8 +222,8 @@ def start(bots: dict, bot_name: str) -> list[int, str]:
             return 3, str(e)    # エラーが発生しました。
             
 
-def kill(bots: dict, bot_name: str) -> list[int, str]:
-    """subprocess.Popenで起動したボットを停止します。"""
+def stop(bots: dict, bot_name: str) -> list[int, str]:
+    """bots['popen']に格納されたsubprocess.Popenを停止します。"""
     if bot_name not in bots.keys():
         return 1, ''    # 引数の値が見つかりません。
     elif (bot := bots[bot_name])['popen'] == None:
@@ -227,6 +249,27 @@ def pull(bots: dict, bot_name: str) -> list[int, str]:
                 return 3, f'cmd: {cmd}\nreturn_code: {return_code}' # リターンコード出るかわからんけど念の為
         except Exception as e:
             return 3, str(e)    # エラーが発生しました。
+
+
+def do_cmd(ctx: discord.ApplicationContext, command: str) -> list[int, str, str, str]:
+    """ローカルマシンでコマンドを実行します。"""
+    do_cmd_permission = get_config_json('do_cmd_permission')
+    if ctx.author.id not in do_cmd_permission:
+        return 3, '権限がありません。', '', ''
+
+    try:
+        ret = subprocess.run(
+            [command],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            encoding='utf-8',
+            timeout=60
+        )
+        return 0, '', ret.stdout, ret.stderr
+    except subprocess.TimeoutExpired as e:
+        return 3, 'タイムアウトしました。（timeout=60）', '', ''
 
 
 def get_config_json(name: str) -> Union[list, dict]:
