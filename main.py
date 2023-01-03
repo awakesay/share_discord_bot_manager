@@ -1,11 +1,9 @@
 
 import os
 import json
-import pathlib
 import platform
 import subprocess
-from functools import cache
-from typing import Union, Literal
+from typing import Union
 import discord
 from tabulate import tabulate       # テーブル化
 
@@ -45,7 +43,7 @@ def run_bot():
     @bot.event
     async def on_ready():
         """起動メッセージ"""
-        print(f'{"-"*30}\ndiscord_bot_manager_on_ready')
+        print(f'{"-"*30}\non_ready: discord_bot_manager')
         print(f'python_version: {platform.python_version()}')
         print(f'pycord_version: {discord.__version__}')
 
