@@ -53,20 +53,20 @@ def run_bot():
     @bot.slash_command(description='ボットのステータスを表示します。')
     async def mng_status_bots(ctx: discord.ApplicationContext):
         """"""
-        await ctx.respond(f'```cmd: mng_status_bots```')
+        await ctx.respond(content=f'```cmd: mng_status_bots```', ephemeral=True)
         table = []
         for bot_name, value in bots.items():
             table.append({
                 'bot_name': bot_name,
                 'status': 'active' if value['popen'] != None else 'dead'
             })
-        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
+        await ctx.respond(content=f'```{tabulate(table, headers="keys")}```', ephemeral=True)
 
 
     @bot.slash_command(description='全ボットに対し起動コマンドを実行します。')
     async def mng_start_all_bot(ctx: discord.ApplicationContext):
         """"""
-        await ctx.respond(f'```cmd: mng_start_all_bot```')
+        await ctx.respond(content=f'```cmd: mng_start_all_bot```', ephemeral=True)
         table = []
         for bot_name in bots.keys():
             res = start(bots, bot_name)
@@ -77,7 +77,7 @@ def run_bot():
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
                 'err_msg': 'none' if res[1] == '' else res[1]
             })
-        await ctx.channel.send(f'```{tabulate(table, headers="keys",)}```')
+        await ctx.respond(content=f'```{tabulate(table, headers="keys",)}```', ephemeral=True)
 
 
     @bot.slash_command(description='指定したボットに対し起動コマンドを実行します。')
@@ -91,7 +91,7 @@ def run_bot():
         )
     ):
         """"""
-        await ctx.respond(f'```cmd: mng_start_bot, bot_name: {bot_name}```')
+        await ctx.respond(content=f'```cmd: mng_start_bot, bot_name: {bot_name}```', ephemeral=True)
         res = start(bots, bot_name)
         table =[{
             'cmd': 'mng_start_bot',
@@ -100,7 +100,7 @@ def run_bot():
             'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
             'err_msg': 'none' if res[1] == '' else res[1]
         }]
-        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
+        await ctx.respond(content=f'```{tabulate(table, headers="keys")}```', ephemeral=True)
 
 
     @bot.slash_command(description='指定したボットに対し停止コマンドを実行します。')
@@ -114,7 +114,7 @@ def run_bot():
         )
     ):
         """"""
-        await ctx.respond(f'```cmd: mng_stop_bot, bot_name: {bot_name}```')
+        await ctx.respond(content=f'```cmd: mng_stop_bot, bot_name: {bot_name}```', ephemeral=True)
         res = stop(bots, bot_name)
         table =[{
             'cmd': 'mng_stop_bot',
@@ -123,7 +123,7 @@ def run_bot():
             'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
             'err_msg': 'none' if res[1] == '' else res[1]
         }]
-        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
+        await ctx.respond(f'```{tabulate(table, headers="keys")}```', ephemeral=True)
 
 
     @bot.slash_command(description='指定したボットに対し停止コマンド・起動コマンドを順次実行します。')
@@ -137,7 +137,7 @@ def run_bot():
         )
     ):
         """"""
-        await ctx.respond(f'```cmd: mng_restart_bot, bot_name: {bot_name}```')
+        await ctx.respond(content=f'```cmd: mng_restart_bot, bot_name: {bot_name}```', ephemeral=True)
         res_stop = list(stop(bots, bot_name)) + ['mng_stop_bot']
         res_start = list(start(bots, bot_name)) + ['mng_start_bot']
         table = []
@@ -149,7 +149,7 @@ def run_bot():
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
                 'err_msg': 'none' if res[1] == '' else res[1]
             })
-        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
+        await ctx.respond(content=f'```{tabulate(table, headers="keys")}```', ephemeral=True)
 
 
     @bot.slash_command(description='指定したボットに対しgit pullコマンド・停止コマンド・起動コマンドを順次実行します。')
@@ -163,7 +163,7 @@ def run_bot():
         )
     ):
         """"""
-        await ctx.respond(f'```cmd: mng_git_pull, bot_name: {bot_name}```')
+        await ctx.respond(content=f'```cmd: mng_git_pull, bot_name: {bot_name}```', ephemeral=True)
         res_pull = list(pull(bots, bot_name)) + ['mng_git_pull']    
         res_stop = list(stop(bots, bot_name)) + ['mng_stop_bot']
         res_start = list(start(bots, bot_name)) + ['mng_start_bot']
@@ -176,7 +176,7 @@ def run_bot():
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
                 'err_msg': 'none' if res[1] == '' else res[1]
             })
-        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
+        await ctx.respond(content=f'```{tabulate(table, headers="keys")}```', ephemeral=True)
 
 
     @bot.slash_command(description=f'ボットが稼働しているローカルマシンにコマンドを送ります。（タイムアウト{DO_CMD_TIMEOUT}秒）')
@@ -188,7 +188,7 @@ def run_bot():
             required=True
         )
     ):
-        await ctx.respond(f'```cmd: mng_do_cmd, command: {command}```')
+        await ctx.respond(content=f'```cmd: mng_do_cmd, command: {command}```', ephemeral=True)
         res = do_cmd(ctx, command)
         table = [{
             'cmd': 'mng_do_cmd',
@@ -197,7 +197,7 @@ def run_bot():
             'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
             'err_msg': 'none' if res[1] == '' else res[1]
         }]
-        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
+        await ctx.respond(f'```{tabulate(table, headers="keys")}```', ephemeral=True)
         
         LENGTH_LIMIT = 1900
         for std_name, std_output in zip(['stdout', 'stderr'], [res[2], res[3]]):
@@ -205,7 +205,7 @@ def run_bot():
                 msg = f'[{std_name}]\n{std_output}'
                 if len(msg) > LENGTH_LIMIT:
                     msg = f'[{std_name}] 表示できない前半を省略しました。\n<省略>{msg[-LENGTH_LIMIT:]}'
-                await ctx.channel.send(f'```{msg}```')
+                await ctx.respond(content=f'```{msg}```', ephemeral=True)
         
     bot.run(get_config_json('discord_bot')['token'])
 

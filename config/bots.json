@@ -9,6 +9,11 @@
         "app_arg": "/home/awakepi4/Desktop/discord_bot_vc_entry/main.py",
         "git_dir": "/home/awakepi4/Desktop/discord_bot_vc_entry"
     },
+    "tts": {
+        "start_app": "python3",
+        "app_arg": "/home/awakepi4/Desktop/discord_bot_tts/main.py",
+        "git_dir": "/home/awakepi4/Desktop/discord_bot_tts"
+    },
     "textra": {
         "start_app": "python3",
         "app_arg": "/home/awakepi4/Desktop/discord_bot_textra/main.py",
