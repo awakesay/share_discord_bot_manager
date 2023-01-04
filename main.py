@@ -23,7 +23,7 @@ do_cmds: list = []      # コマンド引数の入力制限
 
 def run_bot():
 
-    global bots         # 関数内でグローバル変数の代入利用
+    global bots         # 関数内でグローバル変数の代入宣言
     global bot_names
 
     # ボット情報取得（popen属性追加）
@@ -53,20 +53,20 @@ def run_bot():
     @bot.slash_command(description='ボットのステータスを表示します。')
     async def mng_status_bots(ctx: discord.ApplicationContext):
         """"""
-        await ctx.respond(f'```\ncmd: mng_status_bots\n```')
+        await ctx.respond(f'```cmd: mng_status_bots```')
         table = []
         for bot_name, value in bots.items():
             table.append({
                 'bot_name': bot_name,
                 'status': 'active' if value['popen'] != None else 'dead'
             })
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
 
 
     @bot.slash_command(description='全ボットに対し起動コマンドを実行します。')
     async def mng_start_all_bot(ctx: discord.ApplicationContext):
         """"""
-        await ctx.respond(f'```\ncmd: mng_start_all_bot\n```')
+        await ctx.respond(f'```cmd: mng_start_all_bot```')
         table = []
         for bot_name in bots.keys():
             res = start(bots, bot_name)
@@ -77,7 +77,7 @@ def run_bot():
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
                 'err_msg': 'none' if res[1] == '' else res[1]
             })
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys",)}\n```')
+        await ctx.channel.send(f'```{tabulate(table, headers="keys",)}```')
 
 
     @bot.slash_command(description='指定したボットに対し起動コマンドを実行します。')
@@ -85,13 +85,13 @@ def run_bot():
         ctx: discord.ApplicationContext,
         bot_name: discord.Option(
             input_type=str,
-            description=f'ボット名を指定してください。（入力候補）',
+            description=f'候補からボット名を選択してください。',
             choices=bot_names,
             required=True
         )
     ):
         """"""
-        await ctx.respond(f'```\ncmd: mng_start_bot, bot_name: {bot_name}\n```')
+        await ctx.respond(f'```cmd: mng_start_bot, bot_name: {bot_name}```')
         res = start(bots, bot_name)
         table =[{
             'cmd': 'mng_start_bot',
@@ -100,7 +100,7 @@ def run_bot():
             'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
             'err_msg': 'none' if res[1] == '' else res[1]
         }]
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
 
 
     @bot.slash_command(description='指定したボットに対し停止コマンドを実行します。')
@@ -108,13 +108,13 @@ def run_bot():
         ctx: discord.ApplicationContext,
         bot_name: discord.Option(
             input_type=str,
-            description=f'ボット名を指定してください。（入力候補）',
+            description=f'候補からボット名を選択してください。',
             choices=bot_names,
             required=True
         )
     ):
         """"""
-        await ctx.respond(f'```\ncmd: mng_stop_bot, bot_name: {bot_name}\n```')
+        await ctx.respond(f'```cmd: mng_stop_bot, bot_name: {bot_name}```')
         res = stop(bots, bot_name)
         table =[{
             'cmd': 'mng_stop_bot',
@@ -123,7 +123,7 @@ def run_bot():
             'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
             'err_msg': 'none' if res[1] == '' else res[1]
         }]
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
 
 
     @bot.slash_command(description='指定したボットに対し停止コマンド・起動コマンドを順次実行します。')
@@ -131,13 +131,13 @@ def run_bot():
         ctx: discord.ApplicationContext,
         bot_name: discord.Option(
             input_type=str,
-            description=f'ボット名を指定してください。（入力候補）',
+            description=f'候補からボット名を選択してください。',
             choices=bot_names,
             required=True
         )
     ):
         """"""
-        await ctx.respond(f'```\ncmd: mng_restart_bot, bot_name: {bot_name}\n```')
+        await ctx.respond(f'```cmd: mng_restart_bot, bot_name: {bot_name}```')
         res_stop = list(stop(bots, bot_name)) + ['mng_stop_bot']
         res_start = list(start(bots, bot_name)) + ['mng_start_bot']
         table = []
@@ -149,7 +149,7 @@ def run_bot():
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
                 'err_msg': 'none' if res[1] == '' else res[1]
             })
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
 
 
     @bot.slash_command(description='指定したボットに対しgit pullコマンド・停止コマンド・起動コマンドを順次実行します。')
@@ -157,13 +157,13 @@ def run_bot():
         ctx: discord.ApplicationContext,
         bot_name: discord.Option(
             input_type=str,
-            description=f'ボット名を指定してください。（入力候補）',
+            description=f'候補からボット名を選択してください。',
             choices=bot_names,
             required=True
         )
     ):
         """"""
-        await ctx.respond(f'```\ncmd: mng_git_pull, bot_name: {bot_name}\n```')
+        await ctx.respond(f'```cmd: mng_git_pull, bot_name: {bot_name}```')
         res_pull = list(pull(bots, bot_name)) + ['mng_git_pull']    
         res_stop = list(stop(bots, bot_name)) + ['mng_stop_bot']
         res_start = list(start(bots, bot_name)) + ['mng_start_bot']
@@ -176,7 +176,7 @@ def run_bot():
                 'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
                 'err_msg': 'none' if res[1] == '' else res[1]
             })
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
 
 
     @bot.slash_command(description=f'ボットが稼働しているローカルマシンにコマンドを送ります。（タイムアウト{DO_CMD_TIMEOUT}秒）')
@@ -188,7 +188,7 @@ def run_bot():
             required=True
         )
     ):
-        await ctx.respond(f'```\ncmd: mng_do_cmd, command: {command}\n```')
+        await ctx.respond(f'```cmd: mng_do_cmd, command: {command}```')
         res = do_cmd(ctx, command)
         table = [{
             'cmd': 'mng_do_cmd',
@@ -197,7 +197,7 @@ def run_bot():
             'ret_msg': RETURN_CODE_MSG.get(res[0], 'unknown'),
             'err_msg': 'none' if res[1] == '' else res[1]
         }]
-        await ctx.channel.send(f'```\n{tabulate(table, headers="keys")}\n```')
+        await ctx.channel.send(f'```{tabulate(table, headers="keys")}```')
         
         LENGTH_LIMIT = 1900
         for std_name, std_output in zip(['stdout', 'stderr'], [res[2], res[3]]):
@@ -205,7 +205,7 @@ def run_bot():
                 msg = f'[{std_name}]\n{std_output}'
                 if len(msg) > LENGTH_LIMIT:
                     msg = f'[{std_name}] 表示できない前半を省略しました。\n<省略>{msg[-LENGTH_LIMIT:]}'
-                await ctx.channel.send(f'```\n{msg}\n```')
+                await ctx.channel.send(f'```{msg}```')
         
     bot.run(get_config_json('discord_bot')['token'])
 
